@@ -14,26 +14,62 @@ from flask import Flask, jsonify
 
 app = Flask(__name__)
 
-HEARTBEAT_URL = "http://monitor:5003/heartbeat"
-
 INSTANCE_ID = socket.gethostname()
 
 RABBITMQ_HOST = os.environ.get('RABBITMQ_HOST')
 RABBITMQ_QUEUE = os.environ.get('RABBITMQ_QUEUE')
 RABBITMQ_USER = os.environ.get('RABBITMQ_USER')
 RABBITMQ_PASS = os.environ.get('RABBITMQ_PASS')
+MONITOR_URL = os.environ.get('MONITOR_URL')
 
 headers = {
     "Content-Type": "application/json",
     "Accept": "application/json"
 }
 
+def create_cursos_table():
+    try:
+        conn = sqlite3.connect('cursos.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS cursos (
+                id INTEGER PRIMARY KEY,
+                name TEXT,
+                type TEXT
+            );
+        ''')
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error creating 'cursos' table: {str(e)}")
+
 @app.route('/suffocate', methods=['POST'])
 def suffocate():
     garbage_array = []
     for i in range(99999999):
-        time.sleep(0.001) 
-        garbage_array.append(i)
+        for j in range(1000):
+            garbage_array.append(j+i)
+        time.sleep(0.00000000001)
+
+@app.route('/cursos', methods=['GET'])
+def get_cursos():
+    try:
+        conn = sqlite3.connect('cursos.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM cursos")
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        keys = ['id', 'name', 'type']
+        result = [dict(zip(keys, row)) for row in rows]
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify(error=str(e)), 500
+
+
 
 def send_heartbeat(url: string):
     while True:
@@ -61,7 +97,7 @@ def save_to_database(data):
     try:
         conn = sqlite3.connect('cursos.db')
         cursor = conn.cursor()
-        query = "INSERT INTO mytable (name, type) VALUES (?, ?)"
+        query = "INSERT INTO cursos (name, type) VALUES (?, ?)"
         values = (data['name'], data['type'])
         cursor.execute(query, values)
         conn.commit()
@@ -81,8 +117,8 @@ def consume_messages():
         channel.queue_declare(queue=RABBITMQ_QUEUE)
         channel.basic_consume(queue=RABBITMQ_QUEUE, on_message_callback=callback, auto_ack=True)
         print('Waiting for messages')
-        channel.start_consuming()
         sys.stdout.flush()
+        channel.start_consuming()
 
     except Exception as e:
         print(f"Error consuming messages: {str(e)}")
@@ -92,10 +128,11 @@ def consume_messages():
 
 
 if __name__ == '__main__':
-    heartbeat_thread = threading.Thread(target=send_heartbeat, args=(HEARTBEAT_URL,))
+    create_cursos_table()
+    heartbeat_thread = threading.Thread(target=send_heartbeat, args=(f"{MONITOR_URL}/heartbeat",))
     heartbeat_thread.daemon = True
     heartbeat_thread.start()
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5002)))
     message_thread = threading.Thread(target=consume_messages)
     message_thread.daemon = True
     message_thread.start()
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5002)))

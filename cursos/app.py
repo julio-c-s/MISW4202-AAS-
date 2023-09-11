@@ -1,14 +1,14 @@
-from datetime import datetime
+import datetime
 import json
 import os
-import string
-import sys
-import time
 import pika
 import requests
 import socket
-import threading
 import sqlite3
+import string
+import sys
+import threading
+import time
 
 from flask import Flask, jsonify
 
@@ -41,7 +41,7 @@ def create_cursos_table():
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"Error creating 'cursos' table: {str(e)}")
+        print(f"Error encountered while creating the 'cursos' table: {str(e)}")
 
 @app.route('/suffocate', methods=['POST'])
 def suffocate():
@@ -78,7 +78,7 @@ def send_heartbeat(url: string):
             if response.status_code != 201:
                 print(f"Failed to send heartbeat. Status code: {response.status_code}")
         except Exception as e:
-            print(f"Error sending heartbeat: {str(e)}")
+            print(f"Error while sending heartbeat:{str(e)}")
         sys.stdout.flush()
         time.sleep(5) 
 

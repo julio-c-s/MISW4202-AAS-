@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 services:
   rabbitmq:
     image: "rabbitmq:management"
@@ -77,3 +77,14 @@ services:
       - "5003:5003"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+
+  auth:
+    build:
+      context: ./auth
+    ports:
+      - "5004:5004"
+    environment:
+      - SQLALCHEMY_DATABASE_URI=sqlite:///Database.db
+      - SECRET_KEY=secretkey
+      - PORT=5004
+    mem_limit: 128m

@@ -11,7 +11,7 @@ from  werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 from datetime import datetime, timedelta
 from functools import wraps
-from models import db, User
+from models import db, User, LoginRegister
 
 app = Flask(__name__)
 
@@ -128,17 +128,21 @@ def get_all_users(current_user):
   
     return jsonify({'users': output})
 
-def save_address_ip_user(headers):
-  print("headers -->", headers)
+def save_address_ip_user(request,user):
+  # save_address_ip_user
+    direccion_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    login_register=LoginRegister(user_id=user.id, ip_address=direccion_ip)
+    # insert login register
+    db.session.add(login_register)
+    db.session.commit()
+    print('La dirección IP es:', direccion_ip)
 
 # route for logging user in
 @app.route('/login', methods =['POST'])
 def login():
     # creates dictionary of form data
     auth = request.json
-    direccion_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-    print('La dirección IP es:', {direccion_ip})
-    # save_address_ip_user(headers)
+   
   
     if not auth or not auth.get('email') or not auth.get('password'):
         # returns 401 if any email or / and password is missing
@@ -166,7 +170,7 @@ def login():
             'public_id': user.public_id,
             'exp' : datetime.utcnow() + timedelta(minutes = 30),
         }, app.config['SECRET_KEY'], "HS256")
-  
+        save_address_ip_user(request,user)
         return make_response(jsonify({'token' : token}), 201)
     # returns 403 if password is wrong
     return make_response(

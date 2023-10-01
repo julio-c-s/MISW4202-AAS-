@@ -128,14 +128,26 @@ def get_all_users(current_user):
   
     return jsonify({'users': output})
 
-def save_address_ip_user(request,user):
-  # save_address_ip_user
+def get_ip_address(request):
     direccion_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    return(direccion_ip)
+
+def save_address_ip_user(user, direccion_ip):
+  # save_address_ip_user
     login_register=LoginRegister(user_id=user.id, ip_address=direccion_ip)
-    # insert login register
     db.session.add(login_register)
     db.session.commit()
+
+def ip_validator(user,direccion_ip):
+    ips=db.session.query(LoginRegister.ip_address).filter_by(user=user).all()
+    ips_list = [ip[0] for ip in ips]
     print('La dirección IP es:', direccion_ip)
+    if len(ips_list)>=3:
+        return direccion_ip in ips_list
+    else:
+        save_address_ip_user(user,direccion_ip)
+        return True
+            
 
 # route for logging user in
 @app.route('/login', methods =['POST'])
@@ -170,8 +182,15 @@ def login():
             'public_id': user.public_id,
             'exp' : datetime.utcnow() + timedelta(minutes = 30),
         }, app.config['SECRET_KEY'], "HS256")
-        save_address_ip_user(request,user)
-        return make_response(jsonify({'token' : token}), 201)
+
+        direccion_ip=get_ip_address(request)
+
+        if ip_validator(user,direccion_ip):
+            return make_response(jsonify({'token' : token}), 201)
+        else: 
+            return make_response(jsonify({'Alerta' : 'Dirección ip no reconocida'}), 403)
+
+        
     # returns 403 if password is wrong
     return make_response(
         'Could not verify',

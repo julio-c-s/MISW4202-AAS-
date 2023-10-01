@@ -145,7 +145,8 @@ def ip_validator(user,direccion_ip):
     if len(ips_list)>=3:
         return direccion_ip in ips_list
     else:
-        save_address_ip_user(user,direccion_ip)
+        if direccion_ip not in ips_list:
+            save_address_ip_user(user,direccion_ip)
         return True
             
 

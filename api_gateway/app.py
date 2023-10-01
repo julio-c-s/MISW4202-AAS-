@@ -127,12 +127,18 @@ def get_all_users(current_user):
         })
   
     return jsonify({'users': output})
-  
+
+def save_address_ip_user(headers):
+  print("headers -->", headers)
+
 # route for logging user in
 @app.route('/login', methods =['POST'])
 def login():
     # creates dictionary of form data
     auth = request.json
+    direccion_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    print('La dirección IP es:', {direccion_ip})
+    # save_address_ip_user(headers)
   
     if not auth or not auth.get('email') or not auth.get('password'):
         # returns 401 if any email or / and password is missing
